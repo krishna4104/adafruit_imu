@@ -14,7 +14,7 @@ class ImuPublisher(Node):
         # Initialize the publisher
         self.publisher_ = self.create_publisher(Imu, '/imu/data', 10)
 
-        # Initialize the timer for periodic publishing (10 Hz)
+        # Initialize the timer for periodic publishing
         self.timer = self.create_timer(0.1, self.publish_imu_data)
 
         # Initialize the sensor
@@ -22,19 +22,18 @@ class ImuPublisher(Node):
         self.sensor = adafruit_bno055.BNO055_I2C(i2c)
         self.get_logger().info("BNO055 IMU initialized")
 
-        # Define sensor-specific offsets
+        # Define offsets
         self.offsets_magnetometer = (53, -130, -477)
         self.offsets_gyroscope = (-2, -2, 1)
         self.offsets_accelerometer = (-59, -2, -22)
 
     def publish_imu_data(self):
-        # Create an Imu message
         msg = Imu()
-
+        
         # Populate the header
         msg.header = Header()
         msg.header.stamp = self.get_clock().now().to_msg()
-        msg.header.frame_id = 'imu'
+        msg.header.frame_id = 'imu_link'
 
         # Read orientation (quaternion)
         quaternion = self.sensor.quaternion
@@ -46,7 +45,7 @@ class ImuPublisher(Node):
                     z=float(quaternion[3]),
                     w=float(quaternion[0])
                 )
-                msg.orientation_covariance = [-1.0] * 9  # Replace with known covariance if available
+                msg.orientation_covariance = [-1.0] * 9  # Unknown covariance
             except (TypeError, ValueError):
                 self.get_logger().warn("Quaternion data type mismatch")
         else:
@@ -61,7 +60,7 @@ class ImuPublisher(Node):
                     y=float(math.radians(gyro[1] - self.offsets_gyroscope[1])),
                     z=float(math.radians(gyro[2] - self.offsets_gyroscope[2]))
                 )
-                msg.angular_velocity_covariance = [-1.0] * 9  # Replace with known covariance if available
+                msg.angular_velocity_covariance = [-1.0] * 9  # Unknown covariance
             except (TypeError, ValueError):
                 self.get_logger().warn("Gyroscope data type mismatch")
         else:
@@ -76,7 +75,7 @@ class ImuPublisher(Node):
                     y=float(accel[1] - self.offsets_accelerometer[1]),
                     z=float(accel[2] - self.offsets_accelerometer[2])
                 )
-                msg.linear_acceleration_covariance = [-1.0] * 9  # Replace with known covariance if available
+                msg.linear_acceleration_covariance = [-1.0] * 9  # Unknown covariance
             except (TypeError, ValueError):
                 self.get_logger().warn("Linear acceleration data type mismatch")
         else:
@@ -84,7 +83,7 @@ class ImuPublisher(Node):
 
         # Publish the message
         self.publisher_.publish(msg)
-        self.get_logger().debug("Published IMU data")
+        # self.get_logger().info("Published IMU data")
 
 def main(args=None):
     rclpy.init(args=args)
